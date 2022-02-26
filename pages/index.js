@@ -1,34 +1,7 @@
 import { Box, Button, Text, TextField, Image } from '@skynexui/components';
+import React from 'react';
+import { useRouter } from 'next/router';
 import appConfig from '../config.json';
-
-function GlobalStyle() {
-  return (
-    <style global jsx>{`
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-        list-style: none;
-      }
-      body {
-        font-family: 'Open Sans', sans-serif;
-      }
-      /* App fit Height */ 
-      html, body, #__next {
-        min-height: 100vh;
-        display: flex;
-        flex: 1;
-      }
-      #__next {
-        flex: 1;
-      }
-      #__next > * {
-        flex: 1;
-      }
-      /* ./App fit Height */ 
-    `}</style>
-  );
-}
 
 function Title(props) {
   const Tag = props.tag || 'h1';
@@ -60,11 +33,13 @@ function Title(props) {
 // export default HomePage
 
 export default function HomePage() {
-  const username = 'rjsmatos98';
+  //const username = 'rjsmatos98';
+  const [username, setUsername] = React.useState('rjsmatos98');
+  const roteamento = useRouter();
+  const initialImage = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
 
   return (
     <>
-      <GlobalStyle />
       <Box
         styleSheet={{
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -91,6 +66,17 @@ export default function HomePage() {
           {/* Formulário */}
           <Box
             as="form"
+            onSubmit={function (event) {
+              if(username.length > 2){
+                event.preventDefault();
+                alert('Certo! Alguem submeteu o form');
+                roteamento.push('/chat');
+                // window.location.href = '/chat';
+              }
+              else{
+                alert('Erro! O campo deve ter no mínimo 2 caracteres');
+              }
+            }}
             styleSheet={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
               width: { xs: '100%', sm: '50%' }, textAlign: 'center', marginBottom: '32px',
@@ -110,6 +96,14 @@ export default function HomePage() {
                   mainColorHighlight: appConfig.theme.colors.primary[500],
                   backgroundColor: appConfig.theme.colors.neutrals[800],
                 },
+              }}
+              value={username}
+              onChange={function Handler(event) {
+                // Onde ta o valor digitado?
+                const valor = event.target.value;
+                // Trocar o valor da variavel
+                // através do React e avise quem precisa
+                setUsername(valor);
               }}
             />
             <Button
@@ -148,7 +142,12 @@ export default function HomePage() {
                 borderRadius: '50%',
                 marginBottom: '16px',
               }}
-              src={`https://github.com/${username}.png`}
+
+              onError={function(event){
+                event.target.src = initialImage;
+              }}
+
+              src={username.length > 2 ? `https://github.com/${username}.png` : initialImage}
             />
             <Text
               variant="body4"
@@ -159,7 +158,7 @@ export default function HomePage() {
                 borderRadius: '1000px'
               }}
             >
-              {username}
+              {username.length > 2 ? username : ''}
             </Text>
           </Box>
           {/* Photo Area */}
