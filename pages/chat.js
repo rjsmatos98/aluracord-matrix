@@ -1,11 +1,26 @@
 import { Box, Text, TextField, Image, Button } from '@skynexui/components';
 import React from 'react';
 import appConfig from '../config.json';
+import { RiDeleteBack2Fill, RiSendPlane2Fill } from 'react-icons/ri'
+import { createClient } from '@supabase/supabase-js'
+
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6Z3hraGhtYmJ4cmVmZnFpY3RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDY2Mjg3MjEsImV4cCI6MTk2MjIwNDcyMX0.JPs9eebtkElJ8BTTYoFXImLpmtYcoInH6-q39TYl2Z8';
+const SUPABASE_URL = 'https://kzgxkhhmbbxreffqictl.supabase.co';
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export default function ChatPage() {
     const [message, setMessage] = React.useState('');
     const [messageList, setMessageList] = React.useState([]);
 
+    React.useEffect(() => {
+        supabaseClient
+        .from('message')
+        .select('*')
+        .order('id', {ascending: false})
+        .then(({ data }) => {
+            setMessageList(data);
+        });
+    }, []);
     /*
     // Usuário
     - Usuário digita no campo textarea
@@ -20,15 +35,24 @@ export default function ChatPage() {
 
     function handleNewMessage(newMessage) {
         const message = {
-            id: messageList.length + 1,
+            //id: messageList.length + 1,
             from: 'vanessametonini',
             text: newMessage,
         };
 
-        setMessageList([
-            message,
-            ...messageList,
-        ]);
+        supabaseClient
+            .from('message')
+            .insert([
+                // Tem que ser um objeto com os MESMOS CAMPOS da tabela do supabase
+                message
+            ])
+            .then(({data}) => {
+                setMessageList([
+                    data[0],
+                    ...messageList,
+                ]);
+            });
+
         setMessage('');
     }
 
@@ -93,7 +117,9 @@ export default function ChatPage() {
                             onKeyPress={(event) => {
                                 if (event.key === 'Enter') {
                                     event.preventDefault();
-                                    handleNewMessage(message);
+                                    if(message.length > 0){
+                                        handleNewMessage(message);
+                                    }
                                 }
                             }}
                             placeholder="Insira sua mensagem aqui..."
@@ -109,6 +135,20 @@ export default function ChatPage() {
                                 color: appConfig.theme.colors.neutrals[200],
                             }}
                         />
+                        <Box
+                            title='Enviar mensagem'
+                            styleSheet={{
+                                margin: 'auto',
+                                cursor: 'pointer',
+                            }}
+                            onClick={() => {
+                                if(message.length > 0){
+                                    handleNewMessage(message);
+                                }
+                            }}
+                        >
+                            <RiSendPlane2Fill />
+                        </Box>
                     </Box>
                 </Box>
             </Box>
@@ -136,11 +176,12 @@ function Header() {
 
 function MessageList(props) {
     console.log(props);
+
     return (
         <Box
             tag="ul"
             styleSheet={{
-                overflow: 'scroll',
+                overflowY: 'scroll',
                 display: 'flex',
                 flexDirection: 'column-reverse',
                 flex: 1,
@@ -177,7 +218,7 @@ function MessageList(props) {
                                     display: 'inline-block',
                                     marginRight: '8px',
                                 }}
-                                src={`https://github.com/vanessametonini.png`}
+                                src={`https://github.com/${message.from}.png`}
                             />
                             <Text tag="strong">
                                 {message.from}
@@ -192,7 +233,22 @@ function MessageList(props) {
                             >
                                 {(new Date().toLocaleDateString())}
                             </Text>
+                            
+                            <Box 
+                                title={`Apagar mensagem`}
+                                styleSheet={{
+                                    marginLeft: 'auto',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={()=>{
+                                    let response = confirm('Deseja remover essa mensagem?')
+                                }}
+                            >
+                                <RiDeleteBack2Fill />
+                            </Box>
+                            
                         </Box>
+                        
                         {message.text}
                     </Text>
                 );
