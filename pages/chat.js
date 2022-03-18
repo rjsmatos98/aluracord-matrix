@@ -1,8 +1,9 @@
 import { Box, Text, TextField, Image, Button } from '@skynexui/components';
 import React from 'react';
+import api from "../src/services/Api";
 import appConfig from '../config.json';
-import { RiDeleteBack2Fill, RiSendPlane2Fill } from 'react-icons/ri'
-import { createClient } from '@supabase/supabase-js'
+import { RiDeleteBack2Fill, RiSendPlane2Fill } from 'react-icons/ri';
+import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6Z3hraGhtYmJ4cmVmZnFpY3RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDY2Mjg3MjEsImV4cCI6MTk2MjIwNDcyMX0.JPs9eebtkElJ8BTTYoFXImLpmtYcoInH6-q39TYl2Z8';
 const SUPABASE_URL = 'https://kzgxkhhmbbxreffqictl.supabase.co';
@@ -11,6 +12,7 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export default function ChatPage() {
     const [message, setMessage] = React.useState('');
     const [messageList, setMessageList] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(true);
 
     React.useEffect(() => {
         supabaseClient
@@ -19,6 +21,7 @@ export default function ChatPage() {
         .order('id', {ascending: false})
         .then(({ data }) => {
             setMessageList(data);
+            setIsLoading(false)
         });
     }, []);
     /*
@@ -93,7 +96,7 @@ export default function ChatPage() {
                         padding: '16px',
                     }}
                 >
-                    <MessageList mensagens={messageList} />
+                    <MessageList mensagens={messageList} isLoading={isLoading} />
                     {/* {messageList.map((currentMessage) => {
                         return (
                             <li key={currentMessage.id}>
@@ -175,7 +178,8 @@ function Header() {
 }
 
 function MessageList(props) {
-    console.log(props);
+    const [isOpen, setOpenState] = React.useState('');
+    const [isId, setIdState] = React.useState('');
 
     return (
         <Box
@@ -188,16 +192,28 @@ function MessageList(props) {
                 color: appConfig.theme.colors.neutrals["000"],
                 marginBottom: '16px',
             }}
-        >
-            {props.mensagens.map((message) => {
+        >   
+            { props.isLoading ? 
+                <Image 
+                    styleSheet={{
+                        width: '50px', 
+                        heigh: '50px',
+                        margin: 'auto',    
+                    }} 
+                    src="./img/loading.gif" 
+                    alt="loading..." 
+                />
+             : 
+             props.mensagens.map((message) => {
                 return (
                     <Text
                         key={message.id}
                         tag="li"
                         styleSheet={{
                             borderRadius: '5px',
-                            padding: '6px',
-                            marginBottom: '12px',
+                            padding: '10px',
+                            marginBottom: '5px',
+                            
                             hover: {
                                 backgroundColor: appConfig.theme.colors.neutrals[700],
                             }
@@ -205,35 +221,14 @@ function MessageList(props) {
                     >
                         <Box
                             styleSheet={{
-                                marginBottom: '8px',
                                 display: 'flex',
                                 alignItems: 'flex-end',
+                                
                             }}
                         >
-                            <Image
-                                styleSheet={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    display: 'inline-block',
-                                    marginRight: '8px',
-                                }}
-                                src={`https://github.com/${message.from}.png`}
-                            />
-                            <Text tag="strong">
-                                {message.from}
-                            </Text>
-                            <Text
-                                styleSheet={{
-                                    fontSize: '10px',
-                                    marginLeft: '8px',
-                                    color: appConfig.theme.colors.neutrals[300],
-                                }}
-                                tag="span"
-                            >
-                                {(new Date().toLocaleDateString())}
-                            </Text>
                             
+                            <UserProfile from={message.from} id={message.id}></UserProfile>
+                                                        
                             <Box 
                                 title={`Apagar mensagem`}
                                 styleSheet={{
@@ -256,3 +251,117 @@ function MessageList(props) {
         </Box>
     )
 }
+
+export function UserProfile(props) { 
+    const [isOpen, setOpenState] = React.useState('');
+    const [isId, setIdState] = React.useState('');
+    const [user, setUser] = React.useState();
+       
+    React.useEffect(() => {
+        api
+            .get(props.from)
+            .then((response) => setUser(response.data))
+            .catch((err) => {
+                console.error("ops! ocorreu um erro" + err);
+            });
+    }, []);
+
+    return (
+      <Box
+        styleSheet={{
+          marginBottom: '8px',
+          display: 'flex',
+          alignItems: 'flex-end',
+        }}
+      >
+        <Image 
+            styleSheet={{
+                width: '25px',
+                height: '25px',
+                borderRadius: '50%',
+                display: 'inline-block',
+                marginRight: '8px',
+            }}
+            src={`https://github.com/${props.from}.png`}
+            onMouseOver={()=>{
+                //alert('passei por cima');
+                //UserProfile(true);
+                setOpenState(true);
+                setIdState(props.id);
+            }}
+            
+        />
+        
+        <Text tag="strong">
+            {props.from}
+        </Text>
+
+        <Text
+            styleSheet={{
+                fontSize: '10px',
+                marginLeft: '8px',
+                color: appConfig.theme.colors.neutrals[300],
+            }}
+            tag="span"
+        >
+            {(new Date().toLocaleDateString())}
+        </Text>
+            
+        {isOpen && isId == props.id && (   
+            <Box
+                tag="div"
+                styleSheet={{
+                    display: 'flex',
+                    position: 'absolute',
+                    padding: '15px',
+                    borderRadius: '1%',
+                    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                }}                
+                onMouseLeave={()=>{
+                    setOpenState(false);
+                }}
+            >   
+                <Box 
+                    styleSheet={{
+                        width: '150px',
+                        height: '150px'
+                    }}
+                >
+                    <Image 
+                        styleSheet={{
+                            borderRadius: '50%',
+                            }}
+                        src={`https://github.com/${props.from}.png`}
+                    />  
+
+                    <Text 
+                        tag="a"
+                        styleSheet={{
+                            textAlign: 'center',
+                            paddingTop: '5px',
+                            cursor:'pointer'
+                        }}
+                        onClick={() => (
+                            window.open(`https://github.com/${props.from}`,'_blank')
+                        )}
+                    >
+                        {user?.name}
+                    </Text>
+                </Box>
+                <Box 
+                    styleSheet={{
+                        marginLeft: '12px',
+                    }}
+                >
+                    <Box>
+                        <Image
+                            src={`https://github-readme-stats.vercel.app/api/top-langs/?username=${props.from}&layout=compact&langs_count=10&theme=panda`}
+                        />
+                    </Box>
+                </Box>
+            </Box>
+        )}
+      </Box>
+      
+    )
+  }

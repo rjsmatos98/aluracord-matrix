@@ -6,6 +6,7 @@
   "dependencies": {
     "@skynexui/components": "^1.24.3",
     "@supabase/supabase-js": "^1.31.1",
+    "axios": "^0.26.1",
     "next": "^12.1.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
