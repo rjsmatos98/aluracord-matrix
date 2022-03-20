@@ -36,6 +36,7 @@ export default function HomePage() {
   //const username = 'rjsmatos98';
   const [username, setUsername] = React.useState('rjsmatos98');
   const roteamento = useRouter();
+  const [userProfile, setUserProfile] = React.useState(true);
   const initialImage = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
 
   return (
@@ -68,10 +69,15 @@ export default function HomePage() {
             as="form"
             onSubmit={function (event) {
               if(username.length > 2){
-                event.preventDefault();
-                alert('Certo! Alguem submeteu o form');
-                roteamento.push('/chat');
-                // window.location.href = '/chat';
+                if(userProfile){
+                  event.preventDefault();
+                  //alert('Certo! Alguem submeteu o form');
+                  roteamento.push(`/chat?username=${username}`);
+                  // window.location.href = '/chat';
+                }
+                else{
+                  alert('Conta não encontrada!');
+                }
               }
               else{
                 alert('Erro! O campo deve ter no mínimo 2 caracteres');
@@ -104,6 +110,10 @@ export default function HomePage() {
                 // Trocar o valor da variavel
                 // através do React e avise quem precisa
                 setUsername(valor);
+
+                if (userProfile) {
+                  setUserProfile(false);
+                }
               }}
             />
             <Button
@@ -145,6 +155,7 @@ export default function HomePage() {
 
               onError={function(event){
                 event.target.src = initialImage;
+                setUserProfile(false);
               }}
 
               src={username.length > 2 ? `https://github.com/${username}.png` : initialImage}

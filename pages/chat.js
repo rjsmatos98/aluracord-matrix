@@ -2,28 +2,71 @@ import { Box, Text, TextField, Image, Button } from '@skynexui/components';
 import React from 'react';
 import api from "../src/services/Api";
 import appConfig from '../config.json';
+import { useRouter } from 'next/router'
 import { RiDeleteBack2Fill, RiSendPlane2Fill } from 'react-icons/ri';
 import { createClient } from '@supabase/supabase-js';
+import { ButtonSendSticker } from '../src/components/ButtonSendSticker';
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt6Z3hraGhtYmJ4cmVmZnFpY3RsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDY2Mjg3MjEsImV4cCI6MTk2MjIwNDcyMX0.JPs9eebtkElJ8BTTYoFXImLpmtYcoInH6-q39TYl2Z8';
 const SUPABASE_URL = 'https://kzgxkhhmbbxreffqictl.supabase.co';
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+function InsertMessageInRealTime(messageRealTime) {
+    return supabaseClient
+        .from('message')
+        .on('INSERT', (response) => {
+            messageRealTime(response.new);
+        })
+        .subscribe();
+}
+
+function DeleteMessageInRealTime(messageRealTime) {
+    return supabaseClient
+        .from('message')
+        .on('DELETE', ({old}) => {
+            messageRealTime(old.id);    
+        });
+}
+
 export default function ChatPage() {
+    const roteamento = useRouter();
+    const usuarioLogado = roteamento.query.username;
     const [message, setMessage] = React.useState('');
     const [messageList, setMessageList] = React.useState([]);
     const [isLoading, setIsLoading] = React.useState(true);
 
     React.useEffect(() => {
         supabaseClient
-        .from('message')
-        .select('*')
-        .order('id', {ascending: false})
-        .then(({ data }) => {
-            setMessageList(data);
-            setIsLoading(false)
+            .from('message')
+            .select('*')
+            .order('id', { ascending: false })
+            .then(({ data }) => {
+                setMessageList(data);
+                setIsLoading(false)
+            });
+        
+        const subscription = InsertMessageInRealTime((newMessage) => {
+            //console.log('Nova mensagem:', novaMensagem);
+            //console.log('listaDeMensagens:', listaDeMensagens);
+            setMessageList((currentList) => {
+                return [
+                    newMessage,
+                    ...currentList,
+                ]
+            });
         });
+
+        DeleteMessageInRealTime((oldId)=>{
+            setMessageList((messageList)=>{
+                return messageList.filter((message)=>message.id !== oldId)
+            });
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        }
     }, []);
+    
     /*
     // Usuário
     - Usuário digita no campo textarea
@@ -39,7 +82,7 @@ export default function ChatPage() {
     function handleNewMessage(newMessage) {
         const message = {
             //id: messageList.length + 1,
-            from: 'vanessametonini',
+            from: usuarioLogado,
             text: newMessage,
         };
 
@@ -50,13 +93,21 @@ export default function ChatPage() {
                 message
             ])
             .then(({data}) => {
-                setMessageList([
-                    data[0],
-                    ...messageList,
-                ]);
+                //console.log('Criando mensagem: ', data);
             });
 
         setMessage('');
+    }
+
+    function handleDeleteMessage(id){
+        supabaseClient
+            .from('message')
+            .delete()
+            .match({ id:id })
+            .then((data) => {
+                //alert('Mensagem deletada com sucesso!');
+                // setMessageList((oldMessageList) => oldMessageList.filter(message => message.id !== oldId));
+            });
     }
 
     return (
@@ -96,7 +147,13 @@ export default function ChatPage() {
                         padding: '16px',
                     }}
                 >
-                    <MessageList mensagens={messageList} isLoading={isLoading} />
+                    <MessageList 
+                        mensagens={messageList} 
+                        isLoading={isLoading} 
+                        onDeleteMessageClick={(id) => {
+                            handleDeleteMessage(id);
+                        }}
+                    />
                     {/* {messageList.map((currentMessage) => {
                         return (
                             <li key={currentMessage.id}>
@@ -138,11 +195,33 @@ export default function ChatPage() {
                                 color: appConfig.theme.colors.neutrals[200],
                             }}
                         />
+
+                        {/* CallBack */}
+                        <ButtonSendSticker 
+                            onStickerClick={(sticker) => {
+                                //console.log('[USANDO O COMPONENTE] Salva esse sticker no banco');
+                                handleNewMessage(`:sticker:${sticker}`);
+                            }}
+                        />
+                        
                         <Box
                             title='Enviar mensagem'
                             styleSheet={{
-                                margin: 'auto',
                                 cursor: 'pointer',
+                                borderRadius: '50%',
+                                minWidth: '30px',
+                                minHeight: '30px',
+                                marginBottom: '8px',
+                                marginLeft: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: appConfig.theme.colors.primary[300],
+                                filter: 'grayscale(1)',
+                                hover:{
+                                    filter: 'grayscale(0)',
+                                    backgroundColor: appConfig.theme.colors.primary[500],  
+                                }
                             }}
                             onClick={() => {
                                 if(message.length > 0){
@@ -237,6 +316,11 @@ function MessageList(props) {
                                 }}
                                 onClick={()=>{
                                     let response = confirm('Deseja remover essa mensagem?')
+                                    if(response){
+                                        if (Boolean(props.onDeleteMessageClick)) {
+                                            props.onDeleteMessageClick(message.id);
+                                        }
+                                    }
                                 }}
                             >
                                 <RiDeleteBack2Fill />
@@ -244,7 +328,18 @@ function MessageList(props) {
                             
                         </Box>
                         
-                        {message.text}
+                        {message.text.startsWith(':sticker:') ? (
+                            <Image 
+                                src={message.text.replace(':sticker:', '')} 
+                                styleSheet={{
+                                    width: '100px',
+                                    height: '100px'
+                                }}
+                            />
+                        )
+                        : (
+                            message.text
+                        )}
                     </Text>
                 );
             })}
@@ -286,7 +381,7 @@ export function UserProfile(props) {
             onMouseOver={()=>{
                 //alert('passei por cima');
                 //UserProfile(true);
-                setOpenState(true);
+                setOpenState(!isOpen);
                 setIdState(props.id);
             }}
             
@@ -364,4 +459,4 @@ export function UserProfile(props) {
       </Box>
       
     )
-  }
+}
